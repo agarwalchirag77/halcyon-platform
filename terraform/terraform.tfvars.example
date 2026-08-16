@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars OR (better) set these as environment variables so
+# secrets never land in a file:
+#   export TF_VAR_do_token="dop_v1_xxx"
+#   export TF_VAR_spaces_access_id="xxx"      # optional for Step 1
+#   export TF_VAR_spaces_secret_key="xxx"     # optional for Step 1
+#
+# Non-secret overrides you CAN keep in terraform.tfvars:
+region       = "blr1"
+project_name = "halcyon"
+node_size    = "s-2vcpu-4gb"
+node_min     = 2
+node_max     = 5

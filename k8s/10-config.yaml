@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: halcyon-config
+  namespace: halcyon
+data:
+  # Queue names
+  JOB_STREAM: "jobs"
+  JOB_GROUP: "workers"
+  DLQ_STREAM: "jobs:dlq"
+  MAX_ATTEMPTS: "3"
+
+  # ---- DEMO values (fast, so durability recovery is visible in ~1 min) ----
+  # Production would be SLEEP_MIN=20 / SLEEP_MAX=240 and REAPER_MIN_IDLE_MS=300000.
+  SLEEP_MIN: "5"
+  SLEEP_MAX: "30"
+  FAIL_RATE: "0.1"
+  TIMEOUT_RATE: "0.1"
+  INFERENCE_TIMEOUT: "30"
+  # Reaper idle threshold MUST be > SLEEP_MAX so it never steals a live job.
+  REAPER_MIN_IDLE_MS: "45000"
+
+  # DO Serverless Inference model slug (any available model). Change if needed.
+  INFERENCE_MODEL: "llama3.3-70b-instruct"
+  INFERENCE_BASE_URL: "https://inference.do-ai.run"

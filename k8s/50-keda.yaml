@@ -1,0 +1,42 @@
+# Queue-based autoscaling for workers.
+# WHY not CPU HPA for workers: these workers are I/O-bound (they sleep 20s-4min
+# waiting on the model), so CPU stays low even with a huge backlog — CPU HPA would
+# never scale them. The correct signal is QUEUE LAG (undelivered messages).
+#
+# BEFORE APPLYING: replace REPLACE_HOST and REPLACE_PORT below with your Valkey
+# host/port (from `terraform output -raw redis_uri` -> the part after @ and the :PORT).
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-redis-auth-trigger
+  namespace: halcyon
+spec:
+  secretTargetRef:
+    - parameter: password
+      name: keda-redis-auth      # created in the runbook from your redis_uri
+      key: password
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: halcyon-worker-scaler
+  namespace: halcyon
+spec:
+  scaleTargetRef:
+    name: halcyon-worker
+  minReplicaCount: 2             # keep a warm baseline (HA)
+  maxReplicaCount: 10            # ceiling for the migration burst
+  pollingInterval: 15           # check lag every 15s
+  cooldownPeriod: 60            # wait 60s of calm before scaling down
+  triggers:
+    - type: redis-streams
+      metadata:
+        address: "private-halcyon-valkey-do-user-42178304-0.g.db.ondigitalocean.com:25061"
+        stream: "jobs"
+        consumerGroup: "workers"
+        lagCount: "5"           # ~1 extra worker per 5 undelivered messages
+        activationLagCount: "1" # scale off zero as soon as 1 job is waiting
+        enableTLS: "true"       # DO Valkey requires TLS
+      authenticationRef:
+        name: keda-redis-auth-trigger

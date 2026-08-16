@@ -1,0 +1,8 @@
+# Never commit state or secrets
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/.terraform.lock.hcl
+*.env
+kubeconfig*

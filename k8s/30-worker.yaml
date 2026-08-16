@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: halcyon-worker
+  namespace: halcyon
+spec:
+  replicas: 2                       # baseline; KEDA will manage this in Step 2c
+  selector:
+    matchLabels: { app: halcyon-worker }
+  template:
+    metadata:
+      labels: { app: halcyon-worker }
+    spec:
+      imagePullSecrets:
+        - name: registry-halcyon-registry
+      # Long enough to let a normal job finish on graceful shutdown (demo max = 30s).
+      # In production (4-min jobs) you'd raise this to ~300s.
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: worker
+          image: registry.digitalocean.com/halcyon-registry/halcyon:v1
+          args: ["worker"]
+          envFrom:
+            - configMapRef: { name: halcyon-config }
+            - secretRef: { name: halcyon-secrets }
+          livenessProbe:             # restart a wedged worker process
+            exec: { command: ["pgrep", "-f", "worker.py"] }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }   # memory cap = the OOM fix

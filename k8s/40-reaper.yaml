@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: halcyon-reaper
+  namespace: halcyon
+spec:
+  replicas: 1                       # single reaper is enough; it's idempotent
+  selector:
+    matchLabels: { app: halcyon-reaper }
+  template:
+    metadata:
+      labels: { app: halcyon-reaper }
+    spec:
+      imagePullSecrets:
+        - name: registry-halcyon-registry
+      containers:
+        - name: reaper
+          image: registry.digitalocean.com/halcyon-registry/halcyon:v1
+          args: ["reaper"]
+          envFrom:
+            - configMapRef: { name: halcyon-config }
+            - secretRef: { name: halcyon-secrets }
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits:   { cpu: "200m", memory: "128Mi" }

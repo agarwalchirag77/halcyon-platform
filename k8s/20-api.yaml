@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: halcyon-api
+  namespace: halcyon
+spec:
+  replicas: 2                       # 2 for HA + zero-downtime rolling deploys
+  selector:
+    matchLabels: { app: halcyon-api }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0             # never drop below desired during a deploy => 0 downtime
+      maxSurge: 1
+  template:
+    metadata:
+      labels: { app: halcyon-api }
+    spec:
+      imagePullSecrets:
+        - name: registry-halcyon-registry   # created by `doctl registry kubernetes-manifest`
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: api
+          image: registry.digitalocean.com/halcyon-registry/halcyon:v1
+          args: ["api"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef: { name: halcyon-config }
+            - secretRef: { name: halcyon-secrets }
+          readinessProbe:            # no traffic until deps (PG + Valkey) are reachable
+            httpGet: { path: /readyz, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:             # restart if the process wedges
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: halcyon-api
+  namespace: halcyon
+spec:
+  type: LoadBalancer              # DO provisions a public load balancer (~$12/mo)
+  selector: { app: halcyon-api }
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: halcyon-api
+  namespace: halcyon
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: halcyon-api
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
