@@ -118,11 +118,4 @@ RECOMMENDATION.md    ← the deliverable: the write-up for Dana
 RUNBOOK-step*.md     Step-by-step reproduction guides
 ```
 
----
 
-## Deliberate omissions (see RECOMMENDATION.md for the reasoning)
-
-No multi-region/DR beyond managed backups, no service mesh/blue-green, no deep
-multi-tenant isolation yet, a scoped least-privilege DB user is a pre-go-live item, and
-the queue stream isn't trimmed yet. All intentional for a nine-person team on a six-week
-timeline — the recommendation is explicit about what each would take to add.
